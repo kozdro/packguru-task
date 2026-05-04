@@ -23,13 +23,20 @@ Aplikacja startuje pod adresem `http://localhost:5173`.
 src/
 ├── style.css          # globalny arkusz stylów (ciemny motyw)
 ├── App.vue            # główny komponent — header, zakładki, panel detali
+├── main.js            # punkt wejścia aplikacji
 ├── data/
 │   └── mock.js        # dane: 16 węzłów, 20 krawędzi, 3 źródła, transkrypty
-└── components/
-    ├── Graph.vue       # wizualizacja grafu (force-graph)
-    ├── ChunkPanel.vue  # panel szczegółów węzła
-    ├── SourcesView.vue # lista źródeł z częściami
-    └── PartPanel.vue   # panel szczegółów części źródła
+├── components/
+│   ├── Graph.vue       # wizualizacja grafu (force-graph)
+│   ├── ChunkPanel.vue  # panel szczegółów węzła
+│   ├── SourcesView.vue # lista źródeł z częściami
+│   └── PartPanel.vue   # panel szczegółów części źródła
+├── locales/            # (do utworzenia w Zadaniu 1c)
+│   ├── en.json
+│   └── pl.json
+└── utils/              # (do utworzenia w Zadaniu 1a/1b)
+    ├── format.js
+    └── types.js
 ```
 
 ---
@@ -38,17 +45,37 @@ src/
 
 ### Zadanie 1 — Refaktoryzacja
 
-**Kontekst:** W kodzie występują dwa rodzaje duplikacji, które utrudniają utrzymanie projektu.
+**Kontekst:** W kodzie występują dwa rodzaje duplikacji, które utrudniają utrzymanie projektu. Dodatkowo nowy klient wymaga polskojęzycznego interfejsu.
 
 **1a. Wyodrębnij `fmtTime()` do `src/utils/format.js`**
 
-Funkcja `fmtTime(secs)` zamieniająca sekundy na format `M:SS` jest skopiowana dosłownie w trzech komponentach: `ChunkPanel.vue`, `PartPanel.vue` i `SourcesView.vue`. Wyodrębnij ją do osobnego modułu i zastąp import'em we wszystkich miejscach.
+Funkcja `fmtTime(secs)` zamieniająca sekundy na format `M:SS` jest skopiowana dosłownie w trzech komponentach: `ChunkPanel.vue`, `PartPanel.vue` i `SourcesView.vue`. Wyodrębnij ją do osobnego modułu i zastąp importem we wszystkich miejscach.
 
-**1b. Ujednolić konfigurację typów węzłów w `src/utils/types.js`**
+**1b. Ujednolicić konfigurację typów węzłów w `src/utils/types.js`**
 
 `ChunkPanel.vue` definiuje `TYPE_LABELS` (mapowanie klucza typu na etykietę), a `Graph.vue` definiuje `TYPE_COLORS` (mapowanie klucza typu na kolor) — obie struktury operują na tym samym zbiorze pięciu kluczy (`process_stage`, `machine_element`, `machine_part`, `procedure`, `concept`). Utwórz jeden plik `src/utils/types.js`, który eksportuje obie mapy, i zaktualizuj oba komponenty.
 
-**Oczekiwany efekt:** Żadnych zmian wizualnych. Kod jest krótszy, a każda wartość istnieje w jednym miejscu.
+**1c. Dodaj obsługę i18n i przetłumacz interfejs na język polski**
+
+Zainstaluj `vue-i18n` (v9, Composition API) i zintegruj go z aplikacją. Wyodrębnij wszystkie hardkodowane frazy tekstowe z szablonów do dwóch plików:
+
+- `src/locales/en.json` — angielskie oryginały
+- `src/locales/pl.json` — polskie tłumaczenia
+
+Domyślnym językiem aplikacji powinien być **polski**. Dodaj przełącznik `EN | PL` w nagłówku aplikacji, który zmienia język w locie bez przeładowania strony.
+
+Frazy do wyodrębnienia obejmują m.in.:
+
+| Komponent         | Przykładowe frazy                                                                                                                           |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `App.vue`         | zakładki „Graph" / „Source Files", „Loading…", „Select a node to explore", licznik `N chunks · M links`                                     |
+| `ChunkPanel.vue`  | „Related Chunks", „Links to", „Referenced by", „Sources", etykiety typów węzłów z `TYPE_LABELS`                                             |
+| `PartPanel.vue`   | „Source Part", „Close"                                                                                                                      |
+| `SourcesView.vue` | „source file(s)" (z pluralizacją), nagłówki kolumn: `#`, `Title`, `Start`, `End`, `Duration`, `Lang`, etykiety metadanych `Path`, `SHA-256` |
+
+Zadbaj o poprawną pluralizację tam, gdzie liczba obiektów jest zmienna (`vue-i18n` obsługuje to przez `$tc` / opcję `plural`).
+
+**Oczekiwany efekt:** Aplikacja domyślnie wyświetla się po polsku; przełącznik `EN | PL` w nagłówku zmienia język w locie. Kod komponentów nie zawiera hardkodowanych napisów — każda fraza istnieje dokładnie w jednym miejscu (plik JSON lub moduł utils).
 
 ---
 
@@ -66,24 +93,18 @@ Zaimplementuj tryb „Path" bezpośrednio w komponencie `Graph.vue`. Szczegóło
 - Jeśli ścieżka nie istnieje — wyświetl nakładkę „No path found".
 - Wyłączenie trybu resetuje cały stan.
 
-**Ważna pułapka:** biblioteka `force-graph` mutuje obiekty krawędzi — pola `source` i `target` stają się referencjami do obiektów węzłów, nie stringami. Lista sąsiedztwa musi obsługiwać oba przypadki.
-
 ---
 
 ### Zadanie 3 — Wyszukiwanie w grafie na żywo
 
 **Kontekst:** Przy większej liczbie węzłów znalezienie konkretnego pojęcia wymaga przewijania listy lub zgadywania pozycji w grafie.
 
-Dodaj pole wyszukiwania do nagłówka aplikacji (`App.vue`) i przekaż zapytanie do komponentu `<Graph>` jako nowy prop `filterQuery`. Szczegółowa specyfikacja znajduje się w bloku komentarza `<!-- TODO Task 3 -->` w `App.vue` — poniżej podsumowanie wymagań:
+Dodaj pole wyszukiwania do nagłówka aplikacji.
 
 - Input wyszukiwania pojawia się w headerze obok licznika węzłów/krawędzi (widoczny tylko w zakładce „Graph").
-- Węzły, których tytuł zawiera wpisany ciąg (case-insensitive), renderowane są z pełną jasnością.
-- Pozostałe węzły są przyciemnione do ok. 20% krycia.
-- Obok inputa wyświetlana jest liczba dopasowań oraz przycisk `×` czyszczący zapytanie.
-- Klawisz `/` ustawia focus na input; `Escape` czyści zapytanie i usuwa focus.
 - Przy pustym zapytaniu graf wygląda normalnie.
-
-**Wskazówka:** Pętla canvas w `force-graph` odczytuje props w każdej klatce — nie ma potrzeby reinicjalizacji grafu.
+- Zaznacz węzły które zostały odnalezione
+- Obok inputa wyświetlana jest liczba dopasowań
 
 ---
 
@@ -91,28 +112,29 @@ Dodaj pole wyszukiwania do nagłówka aplikacji (`App.vue`) i przekaż zapytanie
 
 Oceniamy przede wszystkim jakość kodu, nie szybkość jego dostarczenia.
 
-| Obszar | Na co patrzymy |
-|---|---|
-| **Poprawność** | Czy funkcjonalność działa zgodnie ze specyfikacją, włącznie z przypadkami brzegowymi |
-| **Czytelność** | Czy kod jest zrozumiały bez zbędnych komentarzy i nadmiarowych abstrakcji |
-| **Spójność** | Czy nowy kod pasuje stylem i konwencjami do istniejącego |
-| **Refaktoryzacja** | Czy Zadanie 1 eliminuje duplikację bez wprowadzania nowych problemów |
-| **Algorytm** | Czy BFS w Zadaniu 2 jest poprawny i wydajny (O(V + E)) |
-| **UX** | Czy interakcje w Zadaniach 2 i 3 są intuicyjne i responsywne |
+| Obszar             | Na co patrzymy                                                                       |
+| ------------------ | ------------------------------------------------------------------------------------ |
+| **Poprawność**     | Czy funkcjonalność działa zgodnie ze specyfikacją, włącznie z przypadkami brzegowymi |
+| **Czytelność**     | Czy kod jest zrozumiały bez zbędnych komentarzy i nadmiarowych abstrakcji            |
+| **Spójność**       | Czy nowy kod pasuje stylem i konwencjami do istniejącego                             |
+| **Refaktoryzacja** | Czy Zadanie 1 eliminuje duplikację bez wprowadzania nowych problemów                 |
+| **Algorytm**       | Czy BFS w Zadaniu 2 jest poprawny i wydajny (O(V + E))                               |
+| **UX**             | Czy interakcje w Zadaniach 2 i 3 są intuicyjne i responsywne                         |
 
 ---
 
 ## Zasady
 
-- Nie zmieniaj `src/data/mock.js` ani `package.json`.
-- Nie instaluj dodatkowych bibliotek bez uzasadnienia.
-- Zachowaj istniejący ciemny motyw i układ aplikacji.
+- Opisz swój proces pracy w TASK.md, jakich narzędzi AI użyłeś, co ci sie podobało w rezultacie który otrzymałeś z AI. Jaki feedback mu dałeś. Możesz dołączyć prompty których użyłeś.
+- Nie zmieniaj `src/data/mock.js`.
+- Uzasadnij biblioteki które doinstalowałeś w TASK.md.
 - Każde zadanie powinno być commitowane osobno z opisowym komunikatem.
-
----
 
 ## Oddanie zadania
 
-Wyślij link do publicznego repozytorium (GitHub / GitLab) lub archiwum `.zip` z historią commitów na adres podany w wiadomości rekrutacyjnej.
+Wyślij link do publicznego repozytorium (GitHub / GitLab)
+lub archiwum `.zip` z historią commitów na mój adres: jan.dabrowski@packguru.ai
+podany w wiadomości rekrutacyjnej.
 
 Powodzenia!
+Jan
