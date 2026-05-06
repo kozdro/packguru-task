@@ -24,6 +24,11 @@
     "selectEndNode": "Wybierz węzeł końcowy",
     "pathFound": "Znaleziono ścieżkę"
   },
+  "search": {
+    "label": "Szukaj",
+    "placeholder": "Szukaj w grafie",
+    "matches": "{count} dopasowań | {count} dopasowanie | {count} dopasowania | {count} dopasowań"
+  },
   "chunkPanel": {
     "relatedChunks": "Powiązane węzły",
     "linksTo": "Łączy z",

@@ -12,6 +12,19 @@
           ·
           {{ t('app.status.links', { count: graphData.links.length }, graphData.links.length) }}
         </span>
+        <div v-if="tab === 'graph'" class="search-tools">
+          <label for="graph-search" class="search-label">{{ t('search.label') }}</label>
+          <input
+            id="graph-search"
+            v-model="searchQuery"
+            class="search-input"
+            type="text"
+            :placeholder="t('search.placeholder')"
+          >
+          <span v-if="normalizedSearchQuery" class="search-count">
+            {{ t('search.matches', { count: searchMatchCount }, searchMatchCount) }}
+          </span>
+        </div>
         <div class="lang-switch" :aria-label="t('app.language.label')">
           <button
             type="button"
@@ -31,16 +44,6 @@
         </div>
       </div>
 
-      <!--
-        TODO Task 3 — Live Graph Search
-        Add a search <input> here. Pass the query string down to <Graph> as a
-        new `filterQuery` prop. When the query is non-empty:
-          • Nodes whose title matches (case-insensitive) render at full opacity.
-          • All other nodes are dimmed to ~20% opacity inside nodeCanvasObject.
-          • Show "N matches" count here and an × clear button.
-        Keyboard: "/" focuses the input; Escape clears it.
-        Hint: no re-init needed — the canvas loop already reads props every frame.
-      -->
     </header>
 
     <div v-if="tab === 'graph'" class="app-body">
@@ -48,6 +51,7 @@
         <Graph
           :data="graphData"
           :selected-slug="selectedSlug"
+          :filter-query="searchQuery"
           @select="onSelect"
         />
       </div>
@@ -68,12 +72,13 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { graphData, getChunk } from './data/mock.js'
 import Graph from './components/Graph.vue'
 import ChunkPanel from './components/ChunkPanel.vue'
 import SourcesView from './components/SourcesView.vue'
+import { matchesSearchText, normalizeSearchText } from './utils/search.js'
 
 const { t, locale } = useI18n()
 
@@ -81,6 +86,18 @@ const tab = ref('graph')
 const selectedSlug = ref(null)
 const chunk = ref(null)
 const chunkLoading = ref(false)
+const searchQuery = ref('')
+
+const normalizedSearchQuery = computed(() => normalizeSearchText(searchQuery.value))
+const searchMatchCount = computed(() => {
+  if (!normalizedSearchQuery.value) return 0
+
+  let count = 0
+  for (const node of graphData.nodes) {
+    if (matchesSearchText(node.title, normalizedSearchQuery.value)) count++
+  }
+  return count
+})
 
 function setLocale(nextLocale) {
   locale.value = nextLocale

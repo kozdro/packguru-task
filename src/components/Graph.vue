@@ -1,10 +1,3 @@
-<!--
-  Task 1 — Refactoring:
-    TYPE_COLORS below duplicates the same five keys as TYPE_LABELS in ChunkPanel.vue.
-    Extract both into a unified src/utils/types.js config and import from there.
-
-  Task 2 — Algorithm: see the TODO block inside <script setup>.
--->
 <template>
   <div class="graph-wrap">
     <div ref="containerEl" class="graph-canvas" />
@@ -27,14 +20,14 @@ import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ForceGraph from 'force-graph'
 import { TYPE_COLORS } from '../utils/types.js'
+import { matchesSearchText, normalizeSearchText } from '../utils/search.js'
 
 const DEFAULT_COLOR = '#95a5a6'
 
 const props = defineProps({
   data:         { type: Object, default: () => ({ nodes: [], links: [] }) },
   selectedSlug: { type: String, default: null },
-  // Task 3: add filterQuery prop here and use it in nodeCanvasObject
-  // filterQuery: { type: String, default: '' },
+  filterQuery:  { type: String, default: '' },
 })
 const emit = defineEmits(['select'])
 const { t } = useI18n()
@@ -162,6 +155,21 @@ const pathResult = computed(() => {
 const isPathSelected = computed(() => pathModeEnabled.value && !!pathStartSlug.value && !!pathEndSlug.value)
 const showPathHighlight = computed(() => isPathSelected.value && pathResult.value.found)
 const showNoPathOverlay = computed(() => isPathSelected.value && !pathResult.value.found)
+const normalizedFilterQuery = computed(() => normalizeSearchText(props.filterQuery))
+const hasFilterQuery = computed(() => !!normalizedFilterQuery.value)
+const searchMatchSlugs = computed(() => {
+  const matches = new Set()
+  if (!hasFilterQuery.value) return matches
+
+  for (const node of props.data.nodes) {
+    if (!node?.slug) continue
+    if (matchesSearchText(node.title, normalizedFilterQuery.value)) {
+      matches.add(node.slug)
+    }
+  }
+
+  return matches
+})
 const pathStatusText = computed(() => {
   if (!pathStartSlug.value) return t('graph.selectStartNode')
   if (!pathEndSlug.value) return t('graph.selectEndNode')
@@ -209,17 +217,14 @@ onMounted(() => {
     .onNodeClick(onNodeClick)
     .nodeCanvasObject((node, ctx, globalScale) => {
       const isPathNode = pathResult.value.nodeSlugs.has(node.slug)
-      const dimByPath = showPathHighlight.value && !isPathNode
-      ctx.globalAlpha = dimByPath ? 0.2 : 1
-
       const isSelected = node.slug === props.selectedSlug
-      // Task 3: compute match opacity here using props.filterQuery
-      // const isMatch = !props.filterQuery ||
-      //   node.title.toLowerCase().includes(props.filterQuery.toLowerCase())
-      // ctx.globalAlpha = isMatch ? 1 : 0.15
+      const isSearchMatch = hasFilterQuery.value && searchMatchSlugs.value.has(node.slug)
+      const dimByPath = showPathHighlight.value && !isPathNode && !isSelected && !isSearchMatch
+      const dimBySearch = !showPathHighlight.value && hasFilterQuery.value && !isSelected && !isSearchMatch
+      ctx.globalAlpha = dimByPath || dimBySearch ? 0.2 : 1
 
       const color = nodeColor(node)
-      const r = isSelected ? 7 : 4
+      const r = isSelected ? 7 : isPathNode || isSearchMatch ? 5 : 4
 
       ctx.beginPath()
       ctx.arc(node.x, node.y, r, 0, 2 * Math.PI)
@@ -239,6 +244,12 @@ onMounted(() => {
         ctx.arc(node.x, node.y, r + 2.5, 0, 2 * Math.PI)
         ctx.strokeStyle = '#ffffff'
         ctx.lineWidth = 1.5
+        ctx.stroke()
+      } else if (isSearchMatch && !isPathNode) {
+        ctx.beginPath()
+        ctx.arc(node.x, node.y, r + 2.5, 0, 2 * Math.PI)
+        ctx.strokeStyle = '#7db3f7'
+        ctx.lineWidth = 1.25
         ctx.stroke()
       }
 
@@ -275,6 +286,7 @@ watch(() => props.data, d => {
 })
 
 watch([pathModeEnabled, pathStartSlug, pathEndSlug], () => requestGraphRedraw())
+watch(() => props.filterQuery, () => requestGraphRedraw())
 
 watch(() => props.selectedSlug, slug => {
   if (!slug || !fg) return

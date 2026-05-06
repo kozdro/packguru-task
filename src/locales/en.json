@@ -24,6 +24,11 @@
     "selectEndNode": "Select end node",
     "pathFound": "Path found"
   },
+  "search": {
+    "label": "Search",
+    "placeholder": "Search graph",
+    "matches": "{count} matches | {count} match | {count} matches"
+  },
   "chunkPanel": {
     "relatedChunks": "Related Chunks",
     "linksTo": "Links to",
