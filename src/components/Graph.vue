@@ -12,15 +12,8 @@
 <script setup>
 import { ref, watch, onMounted, onUnmounted } from 'vue'
 import ForceGraph from 'force-graph'
+import { TYPE_COLORS } from '../utils/types.js'
 
-// Task 1: unify with TYPE_LABELS in ChunkPanel.vue → src/utils/types.js
-const TYPE_COLORS = {
-  process_stage:   '#4f8ef7',
-  machine_element: '#27ae60',
-  machine_part:    '#16a085',
-  procedure:       '#e67e22',
-  concept:         '#8e44ad',
-}
 const DEFAULT_COLOR = '#95a5a6'
 
 const props = defineProps({

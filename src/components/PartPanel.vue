@@ -24,14 +24,7 @@
 <script setup>
 import { computed } from 'vue'
 import { marked } from 'marked'
-
-// Task 1: extract to src/utils/format.js (also in ChunkPanel.vue and SourcesView.vue)
-function fmtTime(secs) {
-  if (secs == null) return null
-  const m = Math.floor(secs / 60)
-  const s = Math.floor(secs % 60)
-  return `${m}:${String(s).padStart(2, '0')}`
-}
+import { fmtTime } from '../utils/format.js'
 
 const props = defineProps({
   part: { type: Object, required: true },

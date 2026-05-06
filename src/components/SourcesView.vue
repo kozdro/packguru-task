@@ -75,14 +75,7 @@
 import { ref, watch } from 'vue'
 import { sources, getPart } from '../data/mock.js'
 import PartPanel from './PartPanel.vue'
-
-// Task 1: extract to src/utils/format.js (also in ChunkPanel.vue and PartPanel.vue)
-function fmtTime(secs) {
-  if (secs == null) return null
-  const m = Math.floor(secs / 60)
-  const s = Math.floor(secs % 60)
-  return `${m}:${String(s).padStart(2, '0')}`
-}
+import { fmtTime } from '../utils/format.js'
 
 function fmtDate(iso) {
   if (!iso) return '—'

@@ -60,23 +60,8 @@
 <script setup>
 import { computed } from 'vue'
 import { marked } from 'marked'
-
-// Task 1: extract to src/utils/types.js (also duplicated as TYPE_COLORS in Graph.vue)
-const TYPE_LABELS = {
-  process_stage:   'Process Stage',
-  machine_element: 'Machine Element',
-  machine_part:    'Machine Part',
-  procedure:       'Procedure',
-  concept:         'Concept',
-}
-
-// Task 1: extract to src/utils/format.js (also in SourcesView.vue and PartPanel.vue)
-function fmtTime(secs) {
-  if (secs == null) return null
-  const m = Math.floor(secs / 60)
-  const s = Math.floor(secs % 60)
-  return `${m}:${String(s).padStart(2, '0')}`
-}
+import { fmtTime } from '../utils/format.js'
+import { TYPE_LABELS } from '../utils/types.js'
 
 function timeRange(start, end) {
   const s = fmtTime(start)
