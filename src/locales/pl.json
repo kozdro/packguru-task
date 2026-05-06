@@ -17,6 +17,13 @@
       "pl": "PL"
     }
   },
+  "graph": {
+    "path": "Ścieżka",
+    "noPathFound": "Nie znaleziono ścieżki",
+    "selectStartNode": "Wybierz węzeł początkowy",
+    "selectEndNode": "Wybierz węzeł końcowy",
+    "pathFound": "Znaleziono ścieżkę"
+  },
   "chunkPanel": {
     "relatedChunks": "Powiązane węzły",
     "linksTo": "Łączy z",

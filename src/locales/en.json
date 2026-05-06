@@ -17,6 +17,13 @@
       "pl": "PL"
     }
   },
+  "graph": {
+    "path": "Path",
+    "noPathFound": "No path found",
+    "selectStartNode": "Select start node",
+    "selectEndNode": "Select end node",
+    "pathFound": "Path found"
+  },
   "chunkPanel": {
     "relatedChunks": "Related Chunks",
     "linksTo": "Links to",

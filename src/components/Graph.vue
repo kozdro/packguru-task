@@ -6,11 +6,25 @@
   Task 2 — Algorithm: see the TODO block inside <script setup>.
 -->
 <template>
-  <div ref="containerEl" style="width:100%;height:100%" />
+  <div class="graph-wrap">
+    <div ref="containerEl" class="graph-canvas" />
+
+    <div class="graph-controls">
+      <button :class="['path-btn', { active: pathModeEnabled }]" @click="togglePathMode">
+        {{ t('graph.path') }}
+      </button>
+      <span v-if="pathModeEnabled" class="path-status">{{ pathStatusText }}</span>
+    </div>
+
+    <div v-if="showNoPathOverlay" class="graph-overlay">
+      {{ t('graph.noPathFound') }}
+    </div>
+  </div>
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import ForceGraph from 'force-graph'
 import { TYPE_COLORS } from '../utils/types.js'
 
@@ -23,12 +37,154 @@ const props = defineProps({
   // filterQuery: { type: String, default: '' },
 })
 const emit = defineEmits(['select'])
+const { t } = useI18n()
 
 const containerEl = ref(null)
+const pathModeEnabled = ref(false)
+const pathStartSlug = ref(null)
+const pathEndSlug = ref(null)
+
 let fg = null
 
 function nodeColor(node) {
   return TYPE_COLORS[node.type] || DEFAULT_COLOR
+}
+
+function slugOf(endpoint) {
+  if (!endpoint) return null
+  if (typeof endpoint === 'string') return endpoint
+  if (typeof endpoint === 'object') return endpoint.slug ?? null
+  return null
+}
+
+function edgeKey(a, b) {
+  if (!a || !b) return null
+  return a < b ? `${a}__${b}` : `${b}__${a}`
+}
+
+function linkKey(link) {
+  return edgeKey(slugOf(link.source), slugOf(link.target))
+}
+
+function resetPathState() {
+  pathStartSlug.value = null
+  pathEndSlug.value = null
+}
+
+function requestGraphRedraw() {
+  if (!fg) return
+  fg.linkWidth(fg.linkWidth())
+}
+
+function togglePathMode() {
+  pathModeEnabled.value = !pathModeEnabled.value
+  resetPathState()
+  requestGraphRedraw()
+}
+
+const adjacencyMap = computed(() => {
+  const map = new Map()
+
+  for (const node of props.data.nodes) {
+    if (node?.slug) map.set(node.slug, [])
+  }
+
+  for (const link of props.data.links) {
+    const source = slugOf(link.source)
+    const target = slugOf(link.target)
+    if (!source || !target) continue
+
+    const key = edgeKey(source, target)
+    if (!key) continue
+
+    if (!map.has(source)) map.set(source, [])
+    if (!map.has(target)) map.set(target, [])
+
+    map.get(source).push({ slug: target, key })
+    map.get(target).push({ slug: source, key })
+  }
+
+  return map
+})
+
+const pathResult = computed(() => {
+  const start = pathStartSlug.value
+  const end = pathEndSlug.value
+
+  if (!pathModeEnabled.value || !start || !end) {
+    return { found: false, nodeSlugs: new Set(), edgeKeys: new Set() }
+  }
+
+  if (start === end) {
+    return { found: true, nodeSlugs: new Set([start]), edgeKeys: new Set() }
+  }
+
+  const adj = adjacencyMap.value
+  if (!adj.has(start) || !adj.has(end)) {
+    return { found: false, nodeSlugs: new Set(), edgeKeys: new Set() }
+  }
+
+  const queue = [start]
+  let qIndex = 0
+  const visited = new Set([start])
+  const parent = new Map()
+
+  while (qIndex < queue.length) {
+    const current = queue[qIndex++]
+    if (current === end) break
+
+    for (const neighbor of adj.get(current) ?? []) {
+      if (visited.has(neighbor.slug)) continue
+      visited.add(neighbor.slug)
+      parent.set(neighbor.slug, { prev: current, edgeKey: neighbor.key })
+      queue.push(neighbor.slug)
+    }
+  }
+
+  if (!visited.has(end)) {
+    return { found: false, nodeSlugs: new Set(), edgeKeys: new Set() }
+  }
+
+  const nodeSlugs = new Set([end])
+  const edgeKeys = new Set()
+  let cursor = end
+  while (cursor !== start) {
+    const step = parent.get(cursor)
+    if (!step) break
+    edgeKeys.add(step.edgeKey)
+    cursor = step.prev
+    nodeSlugs.add(cursor)
+  }
+
+  return { found: true, nodeSlugs, edgeKeys }
+})
+
+const isPathSelected = computed(() => pathModeEnabled.value && !!pathStartSlug.value && !!pathEndSlug.value)
+const showPathHighlight = computed(() => isPathSelected.value && pathResult.value.found)
+const showNoPathOverlay = computed(() => isPathSelected.value && !pathResult.value.found)
+const pathStatusText = computed(() => {
+  if (!pathStartSlug.value) return t('graph.selectStartNode')
+  if (!pathEndSlug.value) return t('graph.selectEndNode')
+  return pathResult.value.found ? t('graph.pathFound') : t('graph.noPathFound')
+})
+
+function onNodeClick(node) {
+  const slug = slugOf(node)
+  if (!slug) return
+
+  if (!pathModeEnabled.value) {
+    emit('select', slug)
+    return
+  }
+
+  if (!pathStartSlug.value || (pathStartSlug.value && pathEndSlug.value)) {
+    pathStartSlug.value = slug
+    pathEndSlug.value = null
+  } else {
+    pathEndSlug.value = slug
+  }
+
+  requestGraphRedraw()
 }
 
 onMounted(() => {
@@ -36,14 +192,26 @@ onMounted(() => {
     .graphData(props.data)
     .nodeId('slug')
     .nodeLabel('title')
-    .linkColor(() => '#334455')
-    .linkWidth(1)
+    .linkColor(link => {
+      if (!showPathHighlight.value) return '#334455'
+      return pathResult.value.edgeKeys.has(linkKey(link))
+        ? '#ffd166'
+        : 'rgba(51,68,85,0.2)'
+    })
+    .linkWidth(link => {
+      if (!showPathHighlight.value) return 1
+      return pathResult.value.edgeKeys.has(linkKey(link)) ? 2.5 : 1
+    })
     .linkDirectionalArrowLength(3)
     .linkDirectionalArrowRelPos(1)
     .linkLabel('label')
     .backgroundColor('#1a1a2e')
-    .onNodeClick(node => emit('select', node.slug))
+    .onNodeClick(onNodeClick)
     .nodeCanvasObject((node, ctx, globalScale) => {
+      const isPathNode = pathResult.value.nodeSlugs.has(node.slug)
+      const dimByPath = showPathHighlight.value && !isPathNode
+      ctx.globalAlpha = dimByPath ? 0.2 : 1
+
       const isSelected = node.slug === props.selectedSlug
       // Task 3: compute match opacity here using props.filterQuery
       // const isMatch = !props.filterQuery ||
@@ -57,6 +225,14 @@ onMounted(() => {
       ctx.arc(node.x, node.y, r, 0, 2 * Math.PI)
       ctx.fillStyle = color
       ctx.fill()
+
+      if (showPathHighlight.value && isPathNode) {
+        ctx.beginPath()
+        ctx.arc(node.x, node.y, r + 4, 0, 2 * Math.PI)
+        ctx.strokeStyle = '#ffd166'
+        ctx.lineWidth = 2
+        ctx.stroke()
+      }
 
       if (isSelected) {
         ctx.beginPath()
@@ -74,7 +250,7 @@ onMounted(() => {
         ctx.fillText(node.title, node.x, node.y + r + fontSize + 1)
       }
 
-      // Task 3: reset ctx.globalAlpha = 1 after drawing each node
+      ctx.globalAlpha = 1
     })
     .nodeCanvasObjectMode(() => 'replace')
 
@@ -93,33 +269,75 @@ onUnmounted(() => {
   fg = null
 })
 
-watch(() => props.data, d => fg?.graphData(d))
+watch(() => props.data, d => {
+  fg?.graphData(d)
+  requestGraphRedraw()
+})
+
+watch([pathModeEnabled, pathStartSlug, pathEndSlug], () => requestGraphRedraw())
 
 watch(() => props.selectedSlug, slug => {
   if (!slug || !fg) return
   const node = fg.graphData().nodes.find(n => n.slug === slug)
   if (node?.x != null) fg.centerAt(node.x, node.y, 400)
 })
-
-// ─────────────────────────────────────────────────────────────────────────────
-// TODO Task 2 — Shortest Path (BFS)
-//
-// Add a "Path" toggle button (above or overlaid on the graph). When active:
-//
-//   1. Track a `pathStart` and `pathEnd` slug via two successive node clicks.
-//   2. Build an adjacency list from props.data.links (treat edges as undirected).
-//   3. Run BFS from pathStart to pathEnd; record the predecessor map to
-//      reconstruct the path.
-//   4. Expose the path as a Set of slugs and a Set of link ids.
-//   5. In nodeCanvasObject: full opacity + bright ring for path nodes;
-//      dim (opacity 0.2) for all others.
-//   6. In linkColor / linkWidth: highlight path edges; dim the rest.
-//   7. If no path exists, show a "No path found" overlay.
-//   8. Toggling Path Mode off resets all state.
-//
-// Constraints worth thinking about:
-//   • force-graph mutates link objects (source/target become node refs).
-//     Your adjacency list must handle both string slugs and node objects.
-//   • BFS on the canvas thread is synchronous; keep it O(V + E).
-// ─────────────────────────────────────────────────────────────────────────────
 </script>
+
+<style scoped>
+.graph-wrap {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.graph-canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.graph-controls {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 2;
+}
+
+.path-btn {
+  background: #0f2a4a;
+  border: 1px solid #2a5080;
+  color: #d0d0d0;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.path-btn:hover { background: #1a3a6a; }
+.path-btn.active {
+  background: #5a2e0a;
+  border-color: #e67e22;
+  color: #f0a060;
+}
+
+.path-status {
+  font-size: 12px;
+  color: #ccc;
+}
+
+.graph-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  background: rgba(10, 24, 48, 0.9);
+  border: 1px solid #2a5080;
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: #f0a060;
+  font-size: 12px;
+}
+</style>
