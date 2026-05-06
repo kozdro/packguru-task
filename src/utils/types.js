@@ -1,9 +1,9 @@
 export const TYPE_LABELS = {
-  process_stage:   'Process Stage',
-  machine_element: 'Machine Element',
-  machine_part:    'Machine Part',
-  procedure:       'Procedure',
-  concept:         'Concept',
+  process_stage:   'types.process_stage',
+  machine_element: 'types.machine_element',
+  machine_part:    'types.machine_part',
+  procedure:       'types.procedure',
+  concept:         'types.concept',
 }
 
 export const TYPE_COLORS = {

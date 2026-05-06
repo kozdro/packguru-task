@@ -7,13 +7,13 @@
   <div class="chunk-panel">
     <div class="panel-header">
       <div class="panel-title">
-        <span class="type-badge type-procedure">Source Part</span>
+        <span class="type-badge type-procedure">{{ t('partPanel.sourcePart') }}</span>
         <h2>{{ part.title }}</h2>
         <p class="summary">
-          {{ part.source_name }} · Part {{ part.part_index }}{{ timeRange }}{{ langSuffix }}
+          {{ part.source_name }} · {{ t('common.part') }} {{ part.part_index }}{{ timeRange }}{{ langSuffix }}
         </p>
       </div>
-      <button class="close-btn" title="Close" @click="emit('close')">&#x2715;</button>
+      <button class="close-btn" :title="t('common.close')" @click="emit('close')">&#x2715;</button>
     </div>
     <div class="panel-body">
       <div class="markdown-content" v-html="parsedBody" />
@@ -23,8 +23,11 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { marked } from 'marked'
 import { fmtTime } from '../utils/format.js'
+
+const { t } = useI18n()
 
 const props = defineProps({
   part: { type: Object, required: true },

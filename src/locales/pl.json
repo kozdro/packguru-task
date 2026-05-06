@@ -1,0 +1,57 @@
+{
+  "app": {
+    "title": "Graf wiedzy Wiki",
+    "tabs": {
+      "graph": "Graf",
+      "sources": "Pliki źródłowe"
+    },
+    "status": {
+      "chunks": "{count} węzłów | {count} węzeł | {count} węzły | {count} węzłów",
+      "links": "{count} połączeń | {count} połączenie | {count} połączenia | {count} połączeń"
+    },
+    "loading": "Ładowanie…",
+    "emptyState": "Wybierz węzeł, aby go przejrzeć",
+    "language": {
+      "label": "Język",
+      "en": "EN",
+      "pl": "PL"
+    }
+  },
+  "chunkPanel": {
+    "relatedChunks": "Powiązane węzły",
+    "linksTo": "Łączy z",
+    "referencedBy": "Wskazywane przez",
+    "sources": "Źródła"
+  },
+  "partPanel": {
+    "sourcePart": "Część źródła"
+  },
+  "sourcesView": {
+    "sourceFiles": "{count} plików źródłowych | {count} plik źródłowy | {count} pliki źródłowe | {count} plików źródłowych",
+    "parts": "{count} części | {count} część | {count} części | {count} części",
+    "table": {
+      "index": "#",
+      "title": "Tytuł",
+      "start": "Początek",
+      "end": "Koniec",
+      "duration": "Czas trwania",
+      "lang": "Język"
+    },
+    "meta": {
+      "path": "Ścieżka",
+      "sha256": "SHA-256"
+    }
+  },
+  "types": {
+    "process_stage": "Etap procesu",
+    "machine_element": "Element maszyny",
+    "machine_part": "Część maszyny",
+    "procedure": "Procedura",
+    "concept": "Pojęcie"
+  },
+  "common": {
+    "close": "Zamknij",
+    "part": "Część",
+    "notAvailable": "—"
+  }
+}
